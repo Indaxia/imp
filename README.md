@@ -35,7 +35,7 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 ## Quick Start
 
 1. Install IMP
-2. For game modding (especial Warcraft 3 Reforged follow [special steps](#quick-start-for-modding-warcraft-3--other-games)
+2. For game modding (especially Warcraft 3 Reforged follow [the special steps](#quick-start-for-modding-warcraft-3--other-games))
 3. (for Linux) create a symlink /usr/bin/imp -> (imp directory)/imp
 4. Open any terminal window (press Win+R and enter "cmd")
 5. enter ```cd <your project directory>```
