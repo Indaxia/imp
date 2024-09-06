@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Product>Indaxia Modules and Packages</Product>
+    <Company>Indaxia</Company>
+    <Copyright>ScorpioT1000 © 2024</Copyright>
+    <Description>Indaxia Modules and Packages (IMP) is a simple package manager that loads packages from github/bitbucket and builds sources into a single file</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+  </ItemGroup>
+
+</Project>
