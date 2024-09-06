@@ -18,6 +18,7 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 - Install single files directly from Github, Bitbucket or other hosts (allowing them in config)
 - File and directory watcher (sources, config, target)
 - Dependency version resolution
+- Setup your sourceExtensions and sourceCommentFormat to use with other programming languages
 
 ### Module Manager Features
 - Include custom user directories as advanced sources
