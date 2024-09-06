@@ -5,7 +5,7 @@ A simple package and module management for apps written on Lua and other dynamic
 Brings package management and es6-like Lua modules to your project without copy-paste pain and dependency hell.
 
 ## Features
-IMP consists of a Package Manager and a Module Manager with it's own Lua part of code.
+IMP consists of a Package Manager and a Module Manager with it's own Lua part of the code.
 
 A new way to work with lua dependencies: [IMP Module Manager](https://github.com/Indaxia/imp-lua-mm):satellite:
 
@@ -32,14 +32,29 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 ## Quick Start
 
 1. Install IMP
-2. (for Linux) create a symlink /usr/bin/imp -> (imp directory)/imp
-3. Open any terminal window (press Win+R and enter "cmd")
-4. enter ```cd <your project directory>```
-5. then enter ```imp``` - it shows all applicable commands
+2. For game modding (especial Warcraft 3 Reforged follow [special steps](#quick-start-for-modding-warcraft-3--other-games)
+3. (for Linux) create a symlink /usr/bin/imp -> (imp directory)/imp
+4. Open any terminal window (press Win+R and enter "cmd")
+5. enter ```cd <your project directory>```
+6. enter ```imp init src build.lua``` where src can be any sources folder name in the project
+8. ```imp watch``` and now you are free to write code and build on the go
 
-To initialize your package enter ```imp init```. It will create imp-package.json and .imp directory with the dependencies. If you use git (mercurial/svn/...) add .imp to your ignore file (.gitignore).
+To initialize your package enter ```imp init build.lua```. 
+It will create imp-package.json and .imp directory with the dependencies. If you use git (mercurial/svn/...) add .imp to your ignore file (.gitignore).
 
 To add new dependency enter ```imp install <package> <version>```
+
+### Quick start for modding Warcraft 3 / other games
+- create a project folder with the "src" subfolder
+- save your map in "map as a directory" mode into this folder
+- Open any terminal window (press Win+R and enter "cmd")
+- enter ```cd <your project folder>```
+- enter ```imp init src war3map.lua```
+- install all the deps you need
+- ```imp update```
+- ```imp watch```
+
+Now create source files in "src" or save your map to build and test it on the go.
 
 #### Example:
 ```
@@ -49,7 +64,7 @@ We don't recommend to use "any" version in public projects. Some scammers or sto
 
 #### Specific version example (retrieve from git tag):
 ```
-wlpm install https://github.com/Indaxia/imp-demo-hello 1.0
+imp install https://github.com/Indaxia/imp-demo-hello 1.0
 ```
 
 Use ```imp watch``` to let watcher notify PM and MM if something changed and perform download new packages and/or rebuild modules.
@@ -93,7 +108,7 @@ If you want to publish your package folow these steps:
 
 Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure for better understanding.
 
-## Full config example (wlpm-package.json) 
+## Full config example (imp-package.json) 
 
 ```js
 {
@@ -145,4 +160,5 @@ Execute:
 dotnet publish -c Release --self-contained --runtime win-x64 /property:Version=VERSION_HERE
 dotnet publish -c Release --self-contained --runtime linux-x64 /property:Version=VERSION_HERE
 ```
+
 Then use Inno Setup for windows and open Setup\win-x64.iss with it to build the setup file.
