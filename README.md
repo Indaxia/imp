@@ -29,7 +29,7 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 
 [IMP for Windows x64](https://indaxia.com/public/releases/imp/1.0/Install%20IMP%20for%20Windows.exe)
 
-[IMP for Linux x64](https://indaxia.com/public/releases/imp/1.0/Install%20IMP%20for%20Linux%20x64.exe)
+[IMP for Linux x64](https://indaxia.com/public/releases/imp/1.0/Install%20IMP%20for%20Linux%20x64.zip)
 
 ## Quick Start
 
