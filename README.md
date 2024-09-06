@@ -1,4 +1,4 @@
-# Indaxia Modules & Packages (IMP)
+# IMP - Indaxia Modules & Packages for Lua
 
 A simple package and module management for apps written on Lua and other dynamic-typed languages.
 
