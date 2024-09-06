@@ -7,7 +7,7 @@ Brings package management and es6-like Lua modules to your project without copy-
 ## Features
 IMP consists of a Package Manager and a Module Manager with it's own Lua part of code.
 
-Here is a new way to work with dependencies - [IMP Module Manager](https://github.com/Indaxia/imp-lua-mm):satellite:
+A new way to work with lua dependencies: [IMP Module Manager](https://github.com/Indaxia/imp-lua-mm):satellite:
 
 ### Package Manager Features
 - Works with offline directories and online repositories
