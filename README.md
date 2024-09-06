@@ -91,6 +91,8 @@ If you want to publish your package folow these steps:
 4. (optional) add git tag to the repository
 5. Now this is an IMP package!
 
+Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure for better understanding.
+
 ## Full config example (wlpm-package.json) 
 
 ```js
