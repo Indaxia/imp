@@ -4,6 +4,8 @@ A simple package and module management for apps written on Lua and other dynamic
 
 Brings package management and es6-like Lua modules to your project without copy-paste pain and dependency hell.
 
+![GifMaker_20240907000902283](https://github.com/user-attachments/assets/241f4613-7396-4a49-891d-9e72cac59654)
+
 ## Features
 IMP consists of a Package Manager and a Module Manager with it's own Lua part of the code.
 
