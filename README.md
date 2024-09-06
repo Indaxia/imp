@@ -165,3 +165,6 @@ dotnet publish -c Release --self-contained --runtime linux-x64 /property:Version
 ```
 
 Then use Inno Setup for windows and open Setup\win-x64.iss with it to build the setup file.
+
+
+P.S. What WLPM? Didn't hear about it...
