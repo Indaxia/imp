@@ -93,12 +93,35 @@ imp init-clean target.lua
 ```
 With this option IMP just includes code of the dependencies without the MM
 
-### Executing a command after building
-It's possible execute a terminal command when the building process finishes:
+### Executing a command before/after building
+It's possible execute a terminal command when the building process starts and finishes:
 ```
-  "afterBuild": "echo \"hello world\""
+  "beforeBuild": "cmd /C echo \"BEFORE BUILD!\"",
+  "afterBuild": "cmd /C echo \"AFTER BUILD!\" ",
 ```
-It works for root projects only.
+
+You can also add a wildcard to replace it with the target file:
+```
+  "beforeBuild": "cmd /C echo \"BEFORE BUILD! The target file is: %target%\"",
+  "afterBuild": "cmd /C echo \"AFTER BUILD! The target file is: %target%\" ",
+```
+The result will be something like:
+```
+"BEFORE BUILD! The target file is: C:\Local\My project\build.lua"
+...
+"AFTER BUILD! The target file is: C:\Local\My project\build.lua"
+```
+
+Execution works for root projects only.
+
+### Adding extra watchers
+If you want to rebuild the target file on some extra files change add them to the "watchExtra" section:
+```
+  "watchExtra": [
+    "my extra file 1.w3n",
+    "my extra file 2.w3x",
+  ]
+```
 
 ## Publishing Packages
 
