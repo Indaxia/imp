@@ -163,7 +163,11 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
     ],
     // (optional) where to store compiled build. It works for root project only. You can specify different extension for another language
     "target": "build.lua",
-    // (optional) execute this command after build, e.g. "echo \"Hello!\""
+    // (optional) extra file list to trigger rebuild on their change (one relative file name per element)
+    "watchExtra": [],
+    // (optional) execute this command before build, e.g. "cmd /C echo \"Hello!\"". Placeholders available: %target%
+    "beforeBuild": "",
+    // (optional) execute this command after build, e.g. "cmd /C echo \"Hello!\"". Placeholders available: %target%
     "afterBuild": "",
     // (optional) allow more hosts for direct file dependency (allows github.com and bitbucket.org by default). It works for root project only.
     "allowHosts": []
