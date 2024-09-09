@@ -152,12 +152,15 @@ namespace imp
                     if(VerboseLog) Console.WriteLine("-- Watching "+d);
                     WatchDirectory(d, pm.ProjectPackage.SourceExtensions);
                 } else {
-                    WatchDirectory(Path.Combine(pm.ProjectDirectory, d), pm.ProjectPackage.SourceExtensions);
                     if(VerboseLog) Console.WriteLine("-- Watching "+d);
+                    WatchDirectory(Path.Combine(pm.ProjectDirectory, d), pm.ProjectPackage.SourceExtensions);
                 }
             }
             WatchProjectPackage();
             WatchTargetFile();
+            foreach(string fileToWatch in pm.ProjectPackage.WatchExtra) {
+                WatchExtraFile(fileToWatch);
+            }
             PrintReadyMessage();
             Console.ReadKey();
             System.Environment.Exit(0);
@@ -203,7 +206,7 @@ namespace imp
         }
 
         // [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
-        private void WatchTargetFile() 
+        private void WatchTargetFile()
         {
             FileSystemWatcher watcher = new FileSystemWatcher();
             watcher.Path = Path.GetDirectoryName(Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target));
@@ -218,6 +221,34 @@ namespace imp
 
             watcher.EnableRaisingEvents = true;
             Watchers.Add(watcher);
+        }
+
+        // [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
+        private void WatchExtraFile(string relativeName)
+        {
+            FileSystemWatcher watcher = new FileSystemWatcher();
+            watcher.Path = Path.GetDirectoryName(Path.Combine(pm.ProjectDirectory, relativeName));
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.Filter = Path.GetFileName(relativeName);
+
+            watcher.Changed += OnExtraChanged;
+            watcher.Created += OnExtraChanged;
+            watcher.Deleted += OnExtraChanged;
+
+            watcher.EnableRaisingEvents = true;
+            Watchers.Add(watcher);
+        }
+
+        private void OnExtraChanged(object source, FileSystemEventArgs e)
+        {
+            if(!CheckIsFileReallyChanged(e.FullPath)) { return; }
+
+            PrintWatcherEvent("Extra", getChangeType(e.ChangeType), e.FullPath);
+
+            mm.invokeASAP("ModuleManager.RebuildModules", () => {
+                mm.RebuildModules();
+                PrintReadyMessage();
+            });
         }
 
         private void OnTargetChanged(object source, FileSystemEventArgs e)
@@ -302,6 +333,7 @@ namespace imp
         {
             if(Watchers.Count > 0) {
                 var sources = String.Join(',', pm.ProjectPackage.Sources.ToArray());
+                var watchExtra = String.Join(',', pm.ProjectPackage.WatchExtra.ToArray());
                 Console.WriteLine("");
                 Console.WriteLine("Nice! Watching for changes:");
 
@@ -321,6 +353,13 @@ namespace imp
                 Console.Write("  " + pm.ProjectPackage.Target);
                 ConsoleColorChanger.UsePrimary();
                 Console.WriteLine(" -> rebuild modules");
+
+                if(watchExtra.Length > 0) {
+                    ConsoleColorChanger.UseSecondary();
+                    Console.Write("  " + watchExtra);
+                    ConsoleColorChanger.UsePrimary();
+                    Console.WriteLine(" -> rebuild modules");
+                }
             }
 
             Console.WriteLine("");

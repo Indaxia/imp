@@ -17,6 +17,8 @@ namespace imp
         public List<PackageDependency> Dependencies { get; set; }
         public List<string> Sources { get; set; }
         public string Target { get; set; }
+        public List<string> WatchExtra { get; set; }
+        public string BeforeBuild { get; set; }
         public string AfterBuild { get; set; }
         public List<string> AllowHosts { get; set; }
         public string SourceExtensions { get; set; }
@@ -44,6 +46,7 @@ namespace imp
                 Sources.Add(sourceDir);
             }
             Target = targetFileName;
+            WatchExtra = new List<string>();
             AfterBuild = "";
             SourceExtensions = DefaultSourceExtensions;
             SourceCommentFormat = DefaultCommentFormat;
@@ -54,27 +57,25 @@ namespace imp
         {
             JObject json = JObject.Parse(jsonStr);
 
-            if(json["title"] != null) {
-                Title = (string)json["title"];
+            Title = json["title"] == null ? "" : (string)json["title"];
+            Author = json["author"] == null ? "" : (string)json["author"];
+            License = json["license"] == null ? "" : (string)json["license"];
+            Target = json["target"] == null ? "" : (string)json["target"];
+            WatchExtra.Clear();
+            if(json["watchExtra"] != null && json["watchExtra"].Type == JTokenType.Array) {
+                foreach(string extra in json["watchExtra"]) {
+                    WatchExtra.Add(extra);
+                }
             }
-            if(json["author"] != null) {
-                Author = (string)json["author"];
-            }
-            if(json["license"] != null) {
-                License = (string)json["license"];
-            }
-            if(json["target"] != null) {
-                Target = (string)json["target"];
-            }
-            if(json["afterBuild"] != null) {
-                AfterBuild = (string)json["afterBuild"];
-            }
-            if(json["sourceExtensions"] != null) {
-                SourceExtensions = (string)json["sourceExtensions"];
-            }
-            if(json["sourceCommentFormat"] != null) {
-                SourceCommentFormat = (string)json["sourceCommentFormat"];
-            }
+            BeforeBuild = json["beforeBuild"] == null ? "" : (string)json["beforeBuild"];
+            AfterBuild = json["afterBuild"] == null ? "" : (string)json["afterBuild"];
+            SourceExtensions = json["sourceExtensions"] == null 
+                ? DefaultSourceExtensions 
+                : (string)json["sourceExtensions"];
+            SourceCommentFormat = json["sourceCommentFormat"] == null 
+                ? DefaultCommentFormat
+                : (string)json["sourceCommentFormat"];
+            Dependencies.Clear();
             if(json["dependencies"] != null) {
                 if(json["dependencies"].Type != JTokenType.Object) {
                     throw new PackageException("Cannot parse \"" + Title + "\" package. The value of the property 'dependencies' must be an object, if exists");
@@ -83,6 +84,7 @@ namespace imp
                     Dependencies.Add(new PackageDependency(d, Title));
                 }
             }
+            AllowHosts.Clear();
             if(json["allowHosts"] != null) {
                 if(json["allowHosts"].Type != JTokenType.Array) {
                     throw new PackageException("Cannot parse \"" + Title + "\" package. The value of the property 'allowHosts' must be an array, if exists");
@@ -91,6 +93,7 @@ namespace imp
                     AllowHosts.Add(h);
                 }
             }
+            Sources.Clear();
             if(json["sources"] != null && json["sources"].Type == JTokenType.Array) {
                 foreach(string src in json["sources"]) {
                     Sources.Add(src);
@@ -120,6 +123,12 @@ namespace imp
             }
             if(Target.Length > 0) {
                 result.Add(new JProperty("target", Target));
+            }
+            if(WatchExtra.Count > 0) {
+                result.Add(new JProperty("watchExtra", new JArray(WatchExtra.ToArray())));
+            }
+            if(BeforeBuild.Length > 0) {
+                result.Add(new JProperty("beforeBuild", BeforeBuild));
             }
             if(AfterBuild.Length > 0) {
                 result.Add(new JProperty("afterBuild", AfterBuild));

@@ -289,7 +289,10 @@ namespace imp
                 try {
                     jsonStr = File.ReadAllText(packageConfigPath);
                     break;
-                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+                } catch (IOException) when (i <= 30) { 
+                    Console.Write(".");
+                    Thread.Sleep(200);
+                }
             }
             
             var result = new Package(jsonStr);

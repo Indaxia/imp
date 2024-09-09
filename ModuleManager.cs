@@ -59,11 +59,16 @@ namespace imp
             string targetFilename = Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target);
             string targetOriginal = "";
 
+            ExecuteCommand(pm.ProjectPackage.BeforeBuild);
+
             for (int i=1; i <= 30; ++i) {
                 try {
                     targetOriginal = File.ReadAllText(targetFilename);
                     break;
-                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+                } catch (IOException) when (i <= 30) { 
+                    Console.Write(".");
+                    Thread.Sleep(200);
+                }
             }
 
 
@@ -109,7 +114,10 @@ namespace imp
                 try {
                     File.WriteAllText(targetFilename, target);
                     break;
-                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+                } catch (IOException) when (i <= 30) { 
+                    Console.Write(".");
+                    Thread.Sleep(200);
+                }
             }
 
             UnsubscribeASAPEvent("ModuleManager.RebuildModules");
@@ -120,23 +128,26 @@ namespace imp
             Console.WriteLine("Built at "+targetLastChange.ToString("yyyy.MM.dd HH:mm:ss zzz"));
             ConsoleColorChanger.UsePrimary();
 
-            ExecuteAfterBuild();
+            ExecuteCommand(pm.ProjectPackage.AfterBuild);
 
             isBusy = false;
         }
 
-        private void ExecuteAfterBuild()
+        private void ExecuteCommand(string command)
         {
-            if(pm.ProjectPackage.AfterBuild.Length > 0) {
+            var commandLine = command.Trim().Split(" ", 2);
+            var arguments = (commandLine.Length > 1) ? commandLine[1] : "";
+            arguments = arguments.Replace("%target%", Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target));
+            if(commandLine.Length > 0) {
                 Console.WriteLine("");
-                Console.Write("  Executing ");
+                Console.Write("  Executing: ");
                 ConsoleColorChanger.UseSecondary();
-                Console.WriteLine(pm.ProjectPackage.AfterBuild);
+                Console.WriteLine(commandLine[0] + " " + arguments);
                 ConsoleColorChanger.UsePrimary();
 
                 Process cmd = new Process();
-                cmd.StartInfo.FileName = "cmd.exe";
-                cmd.StartInfo.Arguments = "/C " + pm.ProjectPackage.AfterBuild;
+                cmd.StartInfo.FileName = commandLine[0];
+                cmd.StartInfo.Arguments = arguments;
                 cmd.StartInfo.RedirectStandardInput = true;
                 cmd.StartInfo.RedirectStandardOutput = true;
                 cmd.StartInfo.CreateNoWindow = true;
@@ -177,7 +188,10 @@ namespace imp
                   try {
                       result += "\n\n" + pm.ProjectPackage.SourceCommentFormat + "imp-dep " + shortName + "\n" + File.ReadAllText(file);
                       break;
-                  } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+                  } catch (IOException) when (i <= 30) { 
+                    Console.Write(".");
+                    Thread.Sleep(200);
+                }
               }
             }
           }
@@ -199,7 +213,7 @@ namespace imp
             if(dep.Type == DependencyType.Package) {
                 foreach(var src in dep.Sources) {
                     if(VerboseLog) Console.WriteLine("-- Generating code for source: "+src);
-                    dirs.Add(pm.GetDependencyDir(dep));
+                    dirs.Add(Path.Combine(pm.GetDependencyDir(dep), src));
                 }
                 
                 var filenames = new List<string>();
