@@ -172,7 +172,7 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
     // (required for AngelScript dependencies) your main file to include in the dependant projects
     "entryPoint": "main.as",
     // (optional) your remote packages folder (default is ".imp/packages")
-    "packages": "my/packages",
+    "remoteSources": "my/packages",
     // (optional) extra file list to trigger rebuild on their change (one relative file name per element)
     "watchExtra": [],
     // (optional) execute this command before build, e.g. "cmd /C echo \"Hello!\"". Placeholders available: %target%
