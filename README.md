@@ -1,13 +1,14 @@
-# IMP - Indaxia Modules & Packages for Lua
+# IMP - Indaxia Modules & Packages
 
-A simple package and module management for apps written on Lua and other dynamic-typed languages.
+A simple package and module management for apps written on Lua, AngelScript and other dynamic-typed languages.
 
 Brings package management and es6-like Lua modules to your project without copy-paste pain and dependency hell.
+Able to include remote AngelScript dependencies.
 
 ![ezgif-4-6c033fac11](https://github.com/user-attachments/assets/daf0e719-16c5-42a6-935b-c5586fa0bc3e)
 
 ## Features
-IMP consists of a Package Manager and a Module Manager with it's own Lua part of the code.
+IMP consists of a Package Manager and a Module Manager with it's own Lua or AngelScript part of the code.
 
 A new way to work with lua dependencies: [IMP Module Manager](https://github.com/Indaxia/imp-lua-mm):satellite:
 
@@ -18,19 +19,20 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 - Install single files directly from Github, Bitbucket or other hosts (allowing them in config)
 - File and directory watcher (sources, config, target)
 - Dependency version resolution
-- Setup your sourceExtensions and sourceCommentFormat to use with other programming languages
+- Setup your language or sourceExtensions to use with other programming languages
 
 ### Module Manager Features
 - Include custom user directories as advanced sources
 - Right dependency order in the target file
 - ES6-like imports and exports in the Lua script
+- AngelScript #include of your and remote packages
 - Really fast target builder on-the-go (C# watcher)
 
 ## Download
 
-[IMP for Windows x64](https://indaxia.com/public/releases/imp/1.0/Install%20IMP%20for%20Windows.exe)
+[IMP for Windows x64](https://indaxia.com/public/releases/imp/1.2/Install%20IMP%20for%20Windows.exe)
 
-[IMP for Linux x64](https://indaxia.com/public/releases/imp/1.0/Install%20IMP%20for%20Linux%20x64.zip)
+[IMP for Linux x64](https://indaxia.com/public/releases/imp/1.2/Install%20IMP%20for%20Linux%20x64.zip)
 
 ## Quick Start
 
@@ -39,7 +41,8 @@ A new way to work with lua dependencies: [IMP Module Manager](https://github.com
 3. (for Linux) create a symlink /usr/bin/imp -> (imp directory)/imp
 4. Open any terminal window (press Win+R and enter "cmd")
 5. enter ```cd <your project directory>```
-6. enter ```imp init src build.lua``` where src can be any sources folder name in the project
+6. For lua enter ```imp init src build.lua``` where src can be any sources folder name in the project
+    * For AngelScript enter ```imp init src main.as packages``` where src can be any sources folder name in the project to auto-include
 8. ```imp watch``` and now you are free to write code and build on the go
 
 To initialize your package enter ```imp init build.lua```. 
@@ -129,6 +132,7 @@ If you want to publish your package folow these steps:
 1. Create a git repository at Github or Bitbucket
 2. Create imp-package.json in the repository root
 3. Add the "dependencies" and "sources" parameters. Refer the full config example below.
+    * (AngelScript) Add the "entryPoint" parameter with your main file relative path
 4. (optional) add git tag to the repository
 5. Now this is an IMP package!
 
@@ -163,6 +167,8 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
     ],
     // (optional) where to store compiled build. It works for root project only. You can specify different extension for another language
     "target": "build.lua",
+    // (required for AngelScript dependencies) your main file to include in the dependant projects
+    "entryPoint": "main.as",
     // (optional) extra file list to trigger rebuild on their change (one relative file name per element)
     "watchExtra": [],
     // (optional) execute this command before build, e.g. "cmd /C echo \"Hello!\"". Placeholders available: %target%
@@ -173,8 +179,6 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
     "allowHosts": []
     // (optional) set custom file extensions to use another language (e.g. "*.js")
     "sourceExtensions": "*.lua",
-    // (optional) set custom comment format to use another language (e.g. "//")
-    "sourceCommentFormat": "--"
 }
 ```
 

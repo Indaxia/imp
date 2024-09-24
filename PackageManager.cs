@@ -21,6 +21,7 @@ namespace imp
         private RepositoryManager rm;
         private string ProjectStateLockName = "state.lock.json";
         private string ProjectPackageDir = ".imp";
+        private string DefaultProjectDependenciesDir = ".imp/packages";
         private bool VerboseLog = false;
 
         public PackageManager(string projectDir, bool verboseLog)
@@ -38,14 +39,28 @@ namespace imp
             DependenciesOrderIndex.Clear();
         }
 
-        public string GetDependencyDir(PackageDependency dep)
+        protected string GetDependenciesDir()
         {
-            return Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id);
+            if(ProjectPackage != null && ProjectPackage.Source.RemoteSources.Length > 0) {
+                return ProjectPackage.Source.RemoteSources;
+            }
+            return DefaultProjectDependenciesDir;
         }
 
-        public string GetDependencyFile(PackageDependency dep)
+        public string GetDependencyDir(PackageDependency dep, bool absolute = true)
         {
-            return Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id, "src", "file.src");
+            if(absolute) {
+                return Path.Combine(ProjectDirectory, GetDependenciesDir(), dep.id);
+            }
+            return Path.Combine(GetDependenciesDir(), dep.id);
+        }
+
+        public string GetDependencyFile(PackageDependency dep, bool absolute = true)
+        {
+            if(absolute) {
+                return Path.Combine(ProjectDirectory, GetDependenciesDir(), dep.id, "src", "file.src");
+            }
+            return Path.Combine(GetDependenciesDir(), dep.id, "src", "file.src");
         }
 
         public void InstallDependency(string url, string version, bool isFile = false)
@@ -71,7 +86,8 @@ namespace imp
             bool loadAgain = false, 
             bool packageIsLocated = false, 
             string targetFileNameOnCreating = "",
-            string sourceDirOnCreating = ""
+            string sourceDirOnCreating = "",
+            string remoteSourcesDirOnCreating = ""
         ) {
             isBusy = true;
             ConsoleColorChanger.UseAccent();
@@ -91,7 +107,8 @@ namespace imp
             if(!packageIsLocated) {
                 ProjectPackage = LocateProjectPackage(
                     targetFileNameOnCreating, 
-                    sourceDirOnCreating
+                    sourceDirOnCreating,
+                    remoteSourcesDirOnCreating
                 );
             }
 
@@ -193,14 +210,15 @@ namespace imp
                     LoadDependency(d, ++depth);
                 }
             }
-            dep.Sources = p.Sources;
+            dep.Sources = p.Source.Sources;
+            dep.EntryPoint = p.Source.EntryPoint;
             Dependencies.Add(dep.id, dep);
             DependenciesOrderIndex.Add(dep.id);
         }
 
         private Package DownloadDependency(PackageDependency dep, string tmpRoot, int depth = 0)
         {
-            string dirPath = Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id);
+            string dirPath = Path.Combine(ProjectDirectory, GetDependenciesDir(), dep.id);
             var provider = rm.getProvider(dep.Resource);
 
             if(Directory.Exists(dirPath)) {
@@ -225,12 +243,12 @@ namespace imp
                 Directory.CreateDirectory(dirPath);
                 Directory.CreateDirectory(srcPath);
 
-                if(dep.Resource != "" && (provider != null || ProjectPackage.AllowHosts.Contains(host))) {
+                if(dep.Resource.Length > 0 && (provider != null || ProjectPackage.AllowHosts.Contains(host))) {
                     Task.WaitAll(Downloader.downloadFileAsync(dep.Resource, filePath));
 
-                    var result = new Package("", "");
+                    var result = new Package("", "", "");
 
-                    result.Sources.Add("src");
+                    result.Source.Sources.Add("src");
                     result.Title = Path.GetFileNameWithoutExtension(dep.Resource);
 
                     return result;
@@ -260,7 +278,8 @@ namespace imp
 
         private Package LocateProjectPackage(
             string targetFileNameOnCreating = "", 
-            string sourceDirOnCreating = ""
+            string sourceDirOnCreating = "",
+            string remoteSourcesDirOnCreating = ""
         ) {
             Console.Write("  Locating ");
             ConsoleColorChanger.UseSecondary();
@@ -277,12 +296,12 @@ namespace imp
                 File.WriteAllText(packageConfigPath, 
                     Package.getDefaultConfiguration(
                         targetFileNameOnCreating, 
-                        sourceDirOnCreating
+                        sourceDirOnCreating,
+                        remoteSourcesDirOnCreating
                     )
                 );
-            } else {
-                Console.Write("parsing ... ");
             }
+            Console.Write("parsing ... ");
 
             string jsonStr = "";
             for (int i=1; i <= 30; ++i) {
@@ -322,7 +341,7 @@ namespace imp
                 Directory.CreateDirectory(packageDirPath);
             }
 
-            string packagesSubdir = Path.Combine(packageDirPath, "packages");
+            string packagesSubdir = Path.Combine(ProjectDirectory, GetDependenciesDir());
 
             if(! Directory.Exists(packagesSubdir)) {
                 if(VerboseLog) Console.WriteLine("-- Creating "+packagesSubdir);

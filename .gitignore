@@ -10,6 +10,10 @@
 imp-package.json
 *.lua
 Setup/Output
+packages
+*.as
+settings.ini
+AngelScriptParser.exe
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

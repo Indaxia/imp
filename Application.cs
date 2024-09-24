@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Permissions;
 using System.Timers;
+using imp.ModuleManager;
 
 namespace imp
 {
@@ -11,8 +12,8 @@ namespace imp
         public delegate void executionCallback();
         
         private bool VerboseLog = false;
-        private PackageManager pm;
-        private ModuleManager mm;
+        private PackageManager pm = null;
+        private AbstractModuleManager mm = null;
         private string Version = "0.0.0.1"; // this is dynamically retrieved from assembly info
         private int RetryAttempt = 0;
         private List<FileSystemWatcher> Watchers = null;
@@ -24,14 +25,15 @@ namespace imp
             ConsoleColorChanger.SetPrimary(Console.ForegroundColor);
             var noExit = hasArg(args, "--noexit");
 
-            if(args.Length < 1 || noExit) {
+            if(args.Length < 1 || noExit || hasArg(args, "--help")) {
                 Console.WriteLine("Indaxia Modules & Packages "+Version+" (IMP) by ScorpioT1000");
                 Console.WriteLine("Get more info at: https://github.com/Indaxia/imp");
                 Console.WriteLine("Arguments:");
                 Console.WriteLine("  init build.lua");
                 Console.WriteLine("  init src build.lua");
                 Console.WriteLine("  init src war3map.lua");
-                Console.WriteLine("  - initializes a new project with the source dir (optional) and the target file name (use war3map.lua for Warcraft 3)");
+                Console.WriteLine("  init includes/src war3map.as includes/packages");
+                Console.WriteLine("  - initializes a new project with the source dir (optional), the target file name and remote sources dir (optional, default is .imp/packages)");
                 Console.WriteLine("  init-clean");
                 Console.WriteLine("  init-clean build.lua");
                 Console.WriteLine("  - initializes a new project with a minimal configuration and without IMP Module Manager");
@@ -63,16 +65,16 @@ namespace imp
                 VerboseLog = true;
             }
 
-
-
             pm = new PackageManager(projectDir, VerboseLog);
-            mm = new ModuleManager(pm, VerboseLog, Version);
 
             for(; RetryAttempt < 3; ++RetryAttempt) {
                 try {
                     if(hasArg(args, "build")) {
                         pm.RefreshPackages();
-                        mm.RebuildModules();
+                        TryCreateModuleManager();
+                        if(mm != null) {
+                            mm.RebuildModules();
+                        }
                         return;
                     } else if(hasArg(args, "install")) {
                         if(args.Length < 2) {
@@ -83,29 +85,36 @@ namespace imp
                         return;
                     } else if(hasArg(args, "watch")) {
                         pm.RefreshPackages();
-                        mm.RebuildModules();
+                        TryCreateModuleManager();
+                        if(mm != null) {
+                            mm.RebuildModules();
+                        }
                         WatchForChanges();
                     } else if(hasArg(args, "update")) {
                         pm.RefreshPackages(true);
                         return;
                     } else if(hasArg(args, "init")) {
                         if(args.Length < 2) {
-                            Console.WriteLine("init format: init [sourceDir] filename");
+                            Console.WriteLine("init format: init [sourceDir] filename [remoteSourcesDir]");
                         } else {
                             pm.RefreshPackages(
                                 true, 
                                 false, 
                                 args.Length > 2 ? args[2] : args[1], 
-                                args.Length > 2 ? args[1] : ""
+                                args.Length > 2 ? args[1] : "",
+                                args.Length > 3 ? args[3] : ""
                             );
-                            pm.InstallDependency(Package.DefaultModuleManager, "*");
+                            TryCreateModuleManager();
+                            if(mm != null && mm.GetModuleManagerPackageURL().Length > 0) {
+                                pm.InstallDependency(mm.GetModuleManagerPackageURL(), "*");
+                            }
                         }
                         return;
                     } else if(hasArg(args, "init-clean")) {
                         pm.RefreshPackages(true, false, args.Length > 1 ? args[1] : "");
                         return;
                     } else {
-                        Console.WriteLine("Wrong command, execute the program without arguments to get help");
+                        Console.WriteLine("Wrong command. Execute the program without arguments or with --help to get help");
                         return;
                     }
                 } catch(Exception e) {
@@ -117,7 +126,9 @@ namespace imp
                     ConsoleColorChanger.UsePrimary();
                     Console.ReadKey();
                     pm.Clear();
-                    mm.Clear();
+                    if(mm != null) {
+                        mm.Clear();
+                    }
                 }
                 Console.Error.WriteLine("Retry attempt: " + RetryAttempt);
             }
@@ -131,8 +142,26 @@ namespace imp
             return false;
         }
 
+        private void TryCreateModuleManager()
+        {
+            string language = pm.ProjectPackage.GetLanguage();
+            if(language == "lua") {
+                mm = new LuaModuleManager(pm, VerboseLog, Version);
+            } else if(language == "angelscript") {
+                mm = new AngelscriptModuleManager(pm, VerboseLog, Version);
+            } else {
+                mm = null;
+                ConsoleColorChanger.UseWarning();
+                Console.Error.WriteLine("Warning: Cannot find ModuleManager for the language: " + language + ". Please specify \"language\" option in your imp-config.json");
+                ConsoleColorChanger.UsePrimary();
+            }
+        }
+
         private void WatchForChanges()
         {
+            if(mm == null) {
+                throw new Exception("Cannot watch without ModuleManager");
+            }
             if(WatcherChangedFilesCache != null) {
                 WatcherChangedFilesCache.Clear();
             } else {
@@ -146,14 +175,18 @@ namespace imp
             } else {
                 Watchers = new List<FileSystemWatcher>();
             }
+            
+            string filter = (pm.ProjectPackage.Source.CustomExtensions == "")
+                ? mm.GetSourceExtensions()
+                : pm.ProjectPackage.Source.CustomExtensions;
 
-            foreach(string d in pm.ProjectPackage.Sources) {
+            foreach(string d in pm.ProjectPackage.Source.Sources) {
                 if(Path.IsPathRooted(d)) {
                     if(VerboseLog) Console.WriteLine("-- Watching "+d);
-                    WatchDirectory(d, pm.ProjectPackage.SourceExtensions);
+                    WatchDirectory(d, filter);
                 } else {
                     if(VerboseLog) Console.WriteLine("-- Watching "+d);
-                    WatchDirectory(Path.Combine(pm.ProjectDirectory, d), pm.ProjectPackage.SourceExtensions);
+                    WatchDirectory(Path.Combine(pm.ProjectDirectory, d), filter);
                 }
             }
             WatchProjectPackage();
@@ -332,7 +365,7 @@ namespace imp
         private void PrintReadyMessage()
         {
             if(Watchers.Count > 0) {
-                var sources = String.Join(',', pm.ProjectPackage.Sources.ToArray());
+                var sources = String.Join(',', pm.ProjectPackage.Source.Sources.ToArray());
                 var watchExtra = String.Join(',', pm.ProjectPackage.WatchExtra.ToArray());
                 Console.WriteLine("");
                 Console.WriteLine("Nice! Watching for changes:");
@@ -371,16 +404,16 @@ namespace imp
 
         private void PrintWatcherEvent(string prefix, string action, string filename = "", string anotherFilename = "")
         {
-            if(prefix != "") Console.Write("  "+prefix+" ");
+            if(prefix.Length > 0) Console.Write("  "+prefix+" ");
             ConsoleColorChanger.UseAccent();
             Console.Write(action+" ");
             ConsoleColorChanger.UsePrimary();
-            if(filename != "") {
+            if(filename.Length > 0) {
                 ConsoleColorChanger.UseSecondary();
                 Console.Write(filename+" ");
                 ConsoleColorChanger.UsePrimary();
             }
-            if(anotherFilename != "") {
+            if(anotherFilename.Length > 0) {
                 Console.Write(" -> ");
                 ConsoleColorChanger.UseSecondary();
                 Console.Write(anotherFilename+" ");

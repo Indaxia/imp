@@ -1,5 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -7,26 +11,20 @@ namespace imp
 {
     public class Package
     {
-        public const string DefaultCommentFormat = "--";
-        public const string DefaultSourceExtensions = "*.lua";
-        public const string DefaultModuleManager = "https://github.com/Indaxia/imp-lua-mm";
-
         public string Title { get; set; }
         public string Author { get; set; }  
         public string License { get; set; }
         public List<PackageDependency> Dependencies { get; set; }
-        public List<string> Sources { get; set; }
+        public PackageSource Source { get; set; }
         public string Target { get; set; }
         public List<string> WatchExtra { get; set; }
         public string BeforeBuild { get; set; }
         public string AfterBuild { get; set; }
         public List<string> AllowHosts { get; set; }
-        public string SourceExtensions { get; set; }
-        public string SourceCommentFormat { get; set; }
         
-        public Package(string targetFileName, string sourceDir)
+        public Package(string targetFileName, string sourceDir, string remoteSourcesDir)
         {
-            initDefaults(targetFileName, sourceDir);
+            initDefaults(targetFileName, sourceDir, remoteSourcesDir);
         } 
 
         public Package(string jsonStr)   
@@ -35,21 +33,25 @@ namespace imp
             fromJson(jsonStr);
         }
 
-        private void initDefaults(string targetFileName = "", string sourceDir = "")
+        private void initDefaults(string targetFileName = "", string sourceDir = "", string remoteSourcesDir = "")
         {
             Title = "Just another IMP project";
             Author = System.Environment.UserName;
             License = "";
             Dependencies = new List<PackageDependency>();
-            Sources = new List<string>();
-            if(sourceDir != "") {
-                Sources.Add(sourceDir);
-            }
             Target = targetFileName;
             WatchExtra = new List<string>();
             AfterBuild = "";
-            SourceExtensions = DefaultSourceExtensions;
-            SourceCommentFormat = DefaultCommentFormat;
+            BeforeBuild = "";
+            Source = new PackageSource();
+            Source.RemoteSources = remoteSourcesDir;
+            Source.EntryPoint = "";
+            Source.Language = "";
+            Source.CustomExtensions = "";
+            Source.Sources = new List<string>();
+            if(sourceDir.Length > 0) {
+                Source.Sources.Add(sourceDir);
+            }
             AllowHosts = new List<string>();
         }
 
@@ -57,6 +59,9 @@ namespace imp
         {
             JObject json = JObject.Parse(jsonStr);
 
+            if(json["language"] != null) {
+                Source.Language = (string)json["language"];
+            }
             Title = json["title"] == null ? "" : (string)json["title"];
             Author = json["author"] == null ? "" : (string)json["author"];
             License = json["license"] == null ? "" : (string)json["license"];
@@ -69,12 +74,15 @@ namespace imp
             }
             BeforeBuild = json["beforeBuild"] == null ? "" : (string)json["beforeBuild"];
             AfterBuild = json["afterBuild"] == null ? "" : (string)json["afterBuild"];
-            SourceExtensions = json["sourceExtensions"] == null 
-                ? DefaultSourceExtensions 
-                : (string)json["sourceExtensions"];
-            SourceCommentFormat = json["sourceCommentFormat"] == null 
-                ? DefaultCommentFormat
-                : (string)json["sourceCommentFormat"];
+            if(json["sourceExtensions"] != null) {
+                Source.CustomExtensions = (string)json["sourceExtensions"];
+            }
+            if(json["entryPoint"] != null) {
+                Source.EntryPoint = (string)json["entryPoint"];
+            }
+            if(json["remoteSources"] != null) {
+                Source.RemoteSources = (string)json["remoteSources"];
+            }
             Dependencies.Clear();
             if(json["dependencies"] != null) {
                 if(json["dependencies"].Type != JTokenType.Object) {
@@ -93,10 +101,10 @@ namespace imp
                     AllowHosts.Add(h);
                 }
             }
-            Sources.Clear();
+            Source.Sources.Clear();
             if(json["sources"] != null && json["sources"].Type == JTokenType.Array) {
                 foreach(string src in json["sources"]) {
-                    Sources.Add(src);
+                    Source.Sources.Add(src);
                 }
             }
         }
@@ -104,6 +112,7 @@ namespace imp
         public JObject ToJson()
         {
             var result = new JObject();
+            result.Add(new JProperty("language", GetLanguage()));
             if(Title.Length > 0) {
                 result.Add(new JProperty("title", Title));
             }
@@ -118,8 +127,11 @@ namespace imp
                 deps.Add(dep.ToJson());
             }
             result.Add(new JProperty("dependencies", deps));
-            if(Sources.Count > 0) {
-                result.Add(new JProperty("sources", new JArray(Sources.ToArray())));
+            if(Source.Sources.Count > 0) {
+                result.Add(new JProperty("sources", new JArray(Source.Sources.ToArray())));
+            }
+            if(Source.RemoteSources.Length > 0) {
+                result.Add(new JProperty("remoteSources", Source.RemoteSources));
             }
             if(Target.Length > 0) {
                 result.Add(new JProperty("target", Target));
@@ -133,11 +145,11 @@ namespace imp
             if(AfterBuild.Length > 0) {
                 result.Add(new JProperty("afterBuild", AfterBuild));
             }
-            if(SourceExtensions.Length > 0) {
-                result.Add(new JProperty("sourceExtensions", SourceExtensions));
+            if(Source.CustomExtensions.Length > 0) {
+                result.Add(new JProperty("sourceExtensions", Source.CustomExtensions));
             }
-            if(SourceCommentFormat.Length > 0) {
-                result.Add(new JProperty("sourceCommentFormat", SourceCommentFormat));
+            if(Source.EntryPoint.Length > 0) {
+                result.Add(new JProperty("entryPoint", Source.EntryPoint));
             }
             if(AllowHosts.Count > 0) {
                 result.Add(new JProperty("allowHosts", AllowHosts.ToArray()));
@@ -145,9 +157,29 @@ namespace imp
             return result;
         }
 
-        public static string getDefaultConfiguration(string targetFileName, string sourceDir)
+        public string GetLanguage()
         {
-            return new Package(targetFileName, sourceDir).ToJson().ToString();
+            if(Source.Language.Length == 0) {
+                string ext = Path.GetExtension(Target);
+                if(ext == null || ext.Length == 0) {
+                    return "";
+                }
+                ext = ext.Substring(1);
+
+                switch(ext) {
+                    case "as":
+                        return "angelscript";
+                    case "lua":
+                        return "lua";
+                }
+                return ext;
+            }
+            return Source.Language;
+        }
+
+        public static string getDefaultConfiguration(string targetFileName, string sourceDir, string remoteSourcesDir)
+        {
+            return new Package(targetFileName, sourceDir, remoteSourcesDir).ToJson().ToString();
         }
     }
 }

@@ -34,6 +34,7 @@ namespace imp
         public bool TopOrder { get; set; }
         public string id { get{ return _id; } }
         public List<string> Sources;
+        public string EntryPoint { get; set; }
 
         private string _version;
         private string _resource;
@@ -46,15 +47,17 @@ namespace imp
             TopOrder = false;
             Resource = "";
             Sources = new List<string>();
+            EntryPoint = "";
         }
 
-        public PackageDependency(DependencyType type, string resource, string version = "*", bool topOrder = false)
+        public PackageDependency(DependencyType type, string resource, string version = "*", bool topOrder = false, string entryPoint = "")
         {
             Type = type;
             Version = version;
             TopOrder = topOrder;
             Resource = resource;
             Sources = new List<string>();
+            EntryPoint = entryPoint;
         }
 
         public PackageDependency(PackageDependency other)
@@ -64,6 +67,7 @@ namespace imp
             TopOrder = other.TopOrder;
             Resource = other.Resource;
             Sources = other.Sources; // TODO: check if it works
+            EntryPoint = other.EntryPoint;
         }
 
         public PackageDependency(JProperty d, string packageName)
@@ -73,6 +77,7 @@ namespace imp
             TopOrder = false;
             Resource = "";
             Sources = new List<string>();
+            EntryPoint = "";
             if(d.Value.Type == JTokenType.String) {
                 Version = (string)d.Value;
                 Resource = d.Name;
@@ -94,6 +99,9 @@ namespace imp
                         default:
                             throw new PackageException("Cannot parse \"" + packageName + "\" package. The value of the property 'dependencies." + Resource + ".type' must be 'file' or 'package'");
                     }
+                }
+                if(v["entryPoint"] != null) {
+                    EntryPoint = (string)v["entryPoint"];
                 }
                 if(v["topOrder"] != null) {
                     TopOrder = (bool)v["topOrder"];
@@ -133,6 +141,9 @@ namespace imp
                         sourcesArr.Add(s);
                     }
                     resultObj.Add(new JProperty("sources", sourcesArr));
+                    if(EntryPoint.Length > 0) {
+                        resultObj.Add(new JProperty("entryPoint", EntryPoint));
+                    }
                 }
                 return new JProperty(asState ? id : Resource, resultObj);
             }
@@ -141,7 +152,7 @@ namespace imp
 
         public static string generateId(string resourceUrl, string version)
         {
-            resourceUrl += "--" + version;
+            resourceUrl += "__" + version;
 
             StringBuilder sb = new StringBuilder (resourceUrl.Replace('.', '_'));
 
@@ -149,7 +160,7 @@ namespace imp
                 .Replace("https", "")
                 .Replace("http","")
                 .Replace("://", "")
-                .Replace('/', '.')
+                .Replace('/', '_')
                 .Replace('>', '_')
                 .Replace('<', '_')
                 .Replace(':', '_')

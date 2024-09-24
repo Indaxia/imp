@@ -5,50 +5,35 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace imp
-{
-    public class ModuleManager: DelayedBusyState
+namespace imp.ModuleManager {
+    public class LuaModuleManager: AbstractModuleManager
     {
-        public delegate void executionCallback();
-
-        private DateTime targetLastChange;
-
-        private bool VerboseLog = false;
-        private PackageManager pm;
-        private string ClientScriptStart = "imp-built-begin";
-        private string ClientScriptEnd = "imp-built-end\n";
-        private string AppVersion;
-
-        public ModuleManager(PackageManager _pm, bool verboseLog, string appVersion)
+        public LuaModuleManager(PackageManager _pm, bool verboseLog, string appVersion)
+        : base(_pm, verboseLog, appVersion)
         {
-            pm = _pm;
-            VerboseLog = verboseLog;
-            AppVersion = appVersion;
-            Clear();
         }
 
-        public void RebuildModules(executionCallback onSuccess = null)
+        override public string GetModuleManagerPackageURL()
         {
-            pm.invokeASAP("ModuleManager.RebuildModules", () => {
-              _RebuildModules();
-              if(onSuccess != null) onSuccess();
-            });
+            return "https://github.com/Indaxia/imp-lua-mm";
         }
 
-        public void Clear()
+        override public string GetSourceExtensions()
         {
-            targetLastChange = DateTime.UtcNow;
-            targetLastChange.AddDays(-1);
+            return "*.lua";
         }
 
-        public bool IsTargetChangedOutside()
+        override public string GetCommentFormatStart()
         {
-            string targetFilename = Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target);
-            DateTime dt = File.GetLastWriteTimeUtc(targetFilename);
-            return dt.CompareTo(targetLastChange) != 0;
+            return "--";
         }
 
-        private void _RebuildModules()
+        override public string GetCommentFormatEnd()
+        {
+            return "";
+        }
+
+        override protected void RebuildLanguageModules()
         {
             isBusy = true;
             
@@ -74,23 +59,23 @@ namespace imp
 
             targetOriginal = RemoveBetween(
               targetOriginal, 
-              pm.ProjectPackage.SourceCommentFormat+ClientScriptStart, 
-              pm.ProjectPackage.SourceCommentFormat+ClientScriptEnd
+              GetCommentFormatStart()+ClientScriptStart+GetCommentFormatEnd(), 
+              GetCommentFormatStart()+ClientScriptEnd+GetCommentFormatEnd()
             );
 
             string targetHeader = "";
             string targetTop = ""; 
             string targetBottom = "\n\n";
 
-            targetHeader += "\n\n"+pm.ProjectPackage.SourceCommentFormat+" Indaxia Modules & Packages " + AppVersion;
-            targetHeader += "\n"+pm.ProjectPackage.SourceCommentFormat+" Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz");
+            targetHeader += "\n\n"+GetCommentFormatStart()+" Indaxia Modules & Packages " + AppVersion+GetCommentFormatEnd();
+            targetHeader += "\n"+GetCommentFormatStart()+" Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz")+GetCommentFormatEnd();
 
             foreach(string index in pm.DependenciesOrderIndex) {
                 if(! pm.Dependencies.ContainsKey(index)) {
                   throw new ModuleException("Dependencies collection has no index '"+index+"' but it's stored in indexes. Try to run 'imp update'");
                 }
                 PackageDependency dep = pm.Dependencies[index];
-                string code = GetCodeFor(dep);
+                string code = BuildSourcesFor(dep);
                 if(dep.TopOrder) {
                     targetTop += "\n\n" + code;
                 } else {
@@ -98,16 +83,18 @@ namespace imp
                 }
             }
 
-            targetBottom += GetCodeFor(pm.ProjectPackage.Sources.ToArray());
+            targetBottom += BuildSourcesFor(pm.ProjectPackage.Source.Sources.ToArray());
 
-            string target = pm.ProjectPackage.SourceCommentFormat
+            string target = GetCommentFormatStart()
               + ClientScriptStart 
+              + GetCommentFormatEnd()
               + targetHeader 
               + targetTop 
               + targetBottom 
               + "\n" 
-              + pm.ProjectPackage.SourceCommentFormat
+              + GetCommentFormatStart()
               + ClientScriptEnd
+              + GetCommentFormatEnd()
               + targetOriginal;
 
             for (int i=1; i <= 30; ++i) {
@@ -133,37 +120,7 @@ namespace imp
             isBusy = false;
         }
 
-        private void ExecuteCommand(string command)
-        {
-            var commandLine = command.Trim().Split(" ", 2);
-            var arguments = (commandLine.Length > 1) ? commandLine[1] : "";
-            arguments = arguments.Replace("%target%", Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target));
-            if(commandLine.Length > 0) {
-                Console.WriteLine("");
-                Console.Write("  Executing: ");
-                ConsoleColorChanger.UseSecondary();
-                Console.WriteLine(commandLine[0] + " " + arguments);
-                ConsoleColorChanger.UsePrimary();
-
-                Process cmd = new Process();
-                cmd.StartInfo.FileName = commandLine[0];
-                cmd.StartInfo.Arguments = arguments;
-                cmd.StartInfo.RedirectStandardInput = true;
-                cmd.StartInfo.RedirectStandardOutput = true;
-                cmd.StartInfo.CreateNoWindow = true;
-                cmd.StartInfo.UseShellExecute = false;
-                cmd.Start();
-
-                cmd.StandardInput.Flush();
-                cmd.StandardInput.Close();
-                cmd.WaitForExit();
-                ConsoleColorChanger.UseSecondary();
-                Console.WriteLine("");
-                Console.WriteLine(cmd.StandardOutput.ReadToEnd());
-            }
-        }
-
-        private string GetCodeFor(string[] dirs)
+        protected string BuildSourcesFor(string[] dirs)
         {
           if(dirs.Length < 1) { 
             return "";
@@ -176,17 +133,21 @@ namespace imp
               throw new ModuleException("It is forbidden to include root directory, check your \"sources\"");
             }
             string dirPath = Path.Combine(pm.ProjectDirectory, dir);
-            string[] files = Directory.GetFiles(dirPath, pm.ProjectPackage.SourceExtensions, SearchOption.AllDirectories);
+            string filter = (pm.ProjectPackage.Source.CustomExtensions == "")
+                ? GetSourceExtensions() 
+                : pm.ProjectPackage.Source.CustomExtensions;
+            
+            string[] files = Directory.GetFiles(dirPath, filter, SearchOption.AllDirectories);
             foreach(string file in files) {
               Console.Write("  Building source ");
               ConsoleColorChanger.UseSecondary();
               Console.WriteLine(file);
               ConsoleColorChanger.UsePrimary();
-              var shortName = file.Substring(pm.ProjectDirectory.Length+1);
+              var shortPath = file.Substring(pm.ProjectDirectory.Length+1);
 
               for (int i=1; i <= 30; ++i) {
                   try {
-                      result += "\n\n" + pm.ProjectPackage.SourceCommentFormat + "imp-dep " + shortName + "\n" + File.ReadAllText(file);
+                      result += "\n\n" + GetCommentFormatStart() + "imp-dep " + shortPath + GetCommentFormatEnd() + "\n" + File.ReadAllText(file);
                       break;
                   } catch (IOException) when (i <= 30) { 
                     Console.Write(".");
@@ -199,7 +160,7 @@ namespace imp
           return result;
         }
 
-        private string GetCodeFor(PackageDependency dep)
+        protected string BuildSourcesFor(PackageDependency dep)
         {
             Console.Write("  Building ");
             ConsoleColorChanger.UseSecondary();
@@ -208,7 +169,7 @@ namespace imp
 
             var dirs = new List<string>();
             var resSplit = dep.Resource.Split(new char[] {'/' , '\\'});
-            string result = pm.ProjectPackage.SourceCommentFormat+"imp-dep "+resSplit[resSplit.Length-1];
+            string result = GetCommentFormatStart() + "imp-dep " + resSplit[resSplit.Length-1] + GetCommentFormatEnd();
 
             if(dep.Type == DependencyType.Package) {
                 foreach(var src in dep.Sources) {
@@ -217,32 +178,23 @@ namespace imp
                 }
                 
                 var filenames = new List<string>();
+                string filter = (pm.ProjectPackage.Source.CustomExtensions == "")
+                    ? GetSourceExtensions() 
+                    : pm.ProjectPackage.Source.CustomExtensions;
+                    
                 foreach(var dir in dirs) {
-                    filenames.AddRange(Directory.GetFiles(dir, pm.ProjectPackage.SourceExtensions, SearchOption.AllDirectories));
+                    filenames.AddRange(Directory.GetFiles(dir, filter, SearchOption.AllDirectories));
                 }
 
                 foreach(var filename in filenames) {
                     if(VerboseLog) Console.WriteLine("-- Loading code from: "+filename);
                     result += "\n\n" + File.ReadAllText(filename);
                 }
-            } else {
+            } else if(dep.Type == DependencyType.File) {
                 result += File.ReadAllText(pm.GetDependencyFile(dep));
             }
 
             return result;
-        }
-
-        private string RemoveBetween(string source, string start, string end)
-        {
-            var starts = source.IndexOf(start);
-            if(starts == -1) {
-                return source;
-            }
-            var ends = source.IndexOf(end);
-            if(ends == -1) {
-                throw new ModuleException("  Cannot clean target file: end tag not found: "+end);
-            }
-            return source.Substring(0, starts) + source.Substring(ends + end.Length);
         }
     }
 }
