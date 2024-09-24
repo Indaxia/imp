@@ -10,6 +10,7 @@ Able to include remote AngelScript dependencies.
 ## Features
 IMP consists of a Package Manager and a Module Manager with it's own Lua or AngelScript part of the code.
 
+A new way to install packages: imp install
 A new way to work with lua dependencies: [IMP Module Manager](https://github.com/Indaxia/imp-lua-mm):satellite:
 
 ### Package Manager Features
