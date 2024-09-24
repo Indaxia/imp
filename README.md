@@ -144,6 +144,7 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
 ```js
 {
     "title": "IMP - Demo Package", // (optional) your package or root project title
+    "language": "lua", // (optional) your package language
     "author": "ScorpioT1000 / scorpiot1000@yandex.ru", // (optional) author information
     "license": "MIT", // (optional) source code license
     "dependencies": { // list of packages and files required by your source code
@@ -170,6 +171,8 @@ Please refer the [imp-demo](https://github.com/Indaxia/imp-demo-hello) structure
     "target": "build.lua",
     // (required for AngelScript dependencies) your main file to include in the dependant projects
     "entryPoint": "main.as",
+    // (optional) your remote packages folder (default is ".imp/packages")
+    "packages": "my/packages",
     // (optional) extra file list to trigger rebuild on their change (one relative file name per element)
     "watchExtra": [],
     // (optional) execute this command before build, e.g. "cmd /C echo \"Hello!\"". Placeholders available: %target%
